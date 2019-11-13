@@ -17,8 +17,6 @@ def register(address):
 	db.session.commit()
 
 
-
-
 if __name__ == "__main__":
     db.init_app(app=app)
     db.create_all(app=app)
