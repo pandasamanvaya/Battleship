@@ -26,36 +26,30 @@ contract Battleship{
         owner = msg.sender;
     }
 
-    mapping(uint256 => Game) public games;
-    uint256 public nrOfGames = 0;
+    Game game;
 
     //Events
-    event NewGame(uint _gameId, address creator);
+    event NewGame(address creator);
     event MoneyRequired(uint money);
-    event PlayerJoinedGame(uint _gameId, address player);
-    event GameStartTime(uint _gameId, uint time);
-    event GameBoardInitSuccess(uint _gameId, address player);
-    event PlayerMadeMove(uint _gameId, address player, uint8 x, uint8 y);
+    event PlayerJoinedGame(address player);
+    event GameStartTime(uint time);
+    event GameBoardInitSuccess(address player);
+    event PlayerMadeMove(address player, uint8 x, uint8 y);
     event TimedOut(uint cur_time, uint prev_time, uint diff, uint duration);
-    event GameWinner(uint _gameId, address winner);
-    event PlayerMadeAHit(uint _gameId, address player, uint8 x, uint8 y);
+    event GameWinner(address winner);
+    event PlayerMadeAHit(address player, uint8 x, uint8 y, string status);
 
     function newGame() public{
         require(msg.sender == owner, "Only owner can create new Game");
-        Game memory game;
         game.threshold = 20000;
-        game.duration = 10; //10s for timeout
-        nrOfGames++;
+        game.duration = 60; //60s for timeout
         game.player1_hits = 0;
         game.player2_hits = 0;
-        games[nrOfGames] = game;
-        emit NewGame(nrOfGames, msg.sender);
+        emit NewGame(msg.sender);
     }
 
     
-    function joinGame(uint _gameId) public payable{
-        require(_gameId <= nrOfGames, "No such game exists");    
-        Game storage game = games[_gameId];
+    function joinGame() public payable{
         require(msg.sender!=game.player1 && msg.sender!=game.player2, "Already in game");
         require(msg.value>=game.threshold, "Insufficient balance");
         require(game.player1 == address(0) || game.player2 == address(0), "Game in progress");
@@ -66,18 +60,16 @@ contract Battleship{
             game.player1 = msg.sender;
         else game.player2 = msg.sender;
         
-        emit PlayerJoinedGame(_gameId, msg.sender);
+        emit PlayerJoinedGame(msg.sender);
         if(game.turn == address(0))
             game.turn = game.player1;
         if(game.player2 != address(0)){
             game.timelock = now;
-            emit GameStartTime(_gameId, game.timelock);
+            emit GameStartTime(game.timelock);
         }
     }
 
-    function getAddress(uint _gameId) public view returns(address,address){
-        require(_gameId <= nrOfGames, "No such game exists");    
-        Game storage game = games[_gameId];
+    function getAddress() public view returns(address,address){
         return (game.player1,game.player2);
     }
     
@@ -126,9 +118,7 @@ contract Battleship{
         return true;
     }
 
-    function initialize_board(uint _gameId, SquareState[10][10] memory _board,string memory _salt) public {
-        require(_gameId <= nrOfGames, "No such game exists");    
-        Game storage game = games[_gameId];
+    function initialize_board(SquareState[10][10] memory _board,string memory _salt) public {
         if(msg.sender==game.player1){
             require(isEmpty(game.board_1), "Board already initialized(Player 1)");
             require(isValidBoard(_board), "Invalid Board(Player 1)");
@@ -148,13 +138,11 @@ contract Battleship{
                 }
             }
         }
-        emit GameBoardInitSuccess(_gameId, msg.sender);
+        emit GameBoardInitSuccess(msg.sender);
     }
     
-    function commit_move(uint _gameId, uint8 x, uint8 y) public {
-        require(_gameId <= nrOfGames, "No such game exists");    
+    function commit_move(uint8 x, uint8 y) public {
         require(x>0 && x<10 && y>0 && y<10, "Invalid move");
-        Game storage game = games[_gameId];
         require(game.winner == address(0), "Game already has a winner");
         require(game.turn == msg.sender, "Not your turn");
 
@@ -163,52 +151,50 @@ contract Battleship{
         else if(msg.sender == game.player2)
             game.board_guess_2[x][y] = SquareState.O;
 
-        game.turn = next_turn(_gameId);
+        game.turn = next_turn();
 
-        emit PlayerMadeMove(_gameId, msg.sender, x, y);
+        emit PlayerMadeMove(msg.sender, x, y);
     }
 
-    function reveal_move(uint _gameId, uint8 x, uint8 y,string memory _salt) public returns(bytes32[10][10], SquareState[10][10]){
-        require(_gameId <= nrOfGames, "No such game exists");    
+    function reveal_move(uint8 x, uint8 y,string memory _salt) public returns(string){
         require(x>0 && x<10 && y>0 && y<10, "Invalid move");
 
-        Game storage game = games[_gameId];
         if(msg.sender==game.player1){
             if(game.board_1[x][y] == keccak256(abi.encodePacked(tostring(game.board_guess_2[x][y]),_salt)) &&
                 game.board_guess_2[x][y] == SquareState.O){
                 game.board_guess_2[x][y] = SquareState.X;
                 game.player2_hits++;
-                emit PlayerMadeAHit(_gameId, msg.sender, x, y);
-                return (game.board_1, game.board_guess_1);
+                emit PlayerMadeAHit(msg.sender, x, y, "Hit");
             }
+            else 
+                emit PlayerMadeAHit(msg.sender, x, y, "Miss");
+            return tostring(game.board_guess_2[x][y]);
         }
         if(msg.sender==game.player2){
             if(game.board_2[x][y] == keccak256(abi.encodePacked(tostring(game.board_guess_1[x][y]),_salt))&&
                 game.board_guess_1[x][y] == SquareState.O){
                 game.board_guess_1[x][y] = SquareState.X;
                 game.player1_hits++;
-                emit PlayerMadeAHit(_gameId, msg.sender, x, y);
-                return (game.board_2, game.board_guess_2);
+                emit PlayerMadeAHit(msg.sender, x, y, "Hit");
             }
+            else 
+                emit PlayerMadeAHit(msg.sender, x, y, "Miss");
+            return tostring(game.board_guess_1[x][y]);
         }
 
     }
 
-    function set_winner(uint _gameId) public{
-        require(_gameId <= nrOfGames, "No such game exists");
-        Game storage game = games[_gameId];
+    function set_winner() public{
         if(game.winner == address(0)){
-            if(game.player1_hits >= 20)
+            if(game.player1_hits >= 17)
                 game.winner = game.player1;
-            else if(game.player2_hits >= 20)
+            else if(game.player2_hits >= 17)
                 game.winner = game.player2;
         }
-        emit GameWinner(_gameId, game.winner);
+        emit GameWinner(game.winner);
     }
     
-    function next_turn(uint _gameId) public view returns(address){
-        require(_gameId <= nrOfGames, "No such game exists");
-        Game storage game = games[_gameId];
+    function next_turn() public view returns(address){
         if(game.turn == game.player1)
             return game.player2;
         else
@@ -216,9 +202,7 @@ contract Battleship{
     }
 
     // function to redeem ethers on timeout
-    function claimTimeout(uint _gameId) public {
-        require(_gameId <= nrOfGames, "No such game exists");    
-        Game storage game = games[_gameId];
+    function claimTimeout() public {
         require(now - game.timelock >= game.duration, "Game not yet timed out");
         if(game.turn==game.player1){
             game.winner = game.player2;
