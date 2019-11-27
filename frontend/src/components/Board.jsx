@@ -71,6 +71,11 @@ class Board extends Component{
             var z = x+parseInt(this.state.selection);
             if(z<10){
                 for(var i=x;i<z;i++){
+                    if(this.state.filled.indexOf(10*i+y)>0){
+                        return;
+                    }
+                }
+                for(var i=x;i<z;i++){
                     document.getElementById("board"+(10*i+y)).style.background = 'red';
                     let filled = this.state.filled;
                     filled.push(10*i+y);
@@ -84,6 +89,11 @@ class Board extends Component{
         else{
             z = y+parseInt(this.state.selection);
             if(z<10){
+                for(var j=y;j<z;j++){
+                    if(this.state.filled.indexOf(x*10+j)>0){
+                        return;
+                    }
+                }
                 for(var j=y;j<z;j++){
                     document.getElementById("board"+(x*10+j)).style.background = 'red';
                     let filled = this.state.filled;
