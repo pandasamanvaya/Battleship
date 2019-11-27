@@ -4,7 +4,7 @@ import {ButtonToolbar, Button} from "react-bootstrap";
 class Board extends Component{
     constructor(){
         super();
-        this.state = {guess:new Array(10).fill(new Array(10).fill('~')),selection:1,boat_selected:undefined,vertical:false,boats:{PB:false,DT:false,SM:false,BS:false,AC:false}};
+        this.state = {filled:[],guess:new Array(10).fill(new Array(10).fill('~')),selection:1,boat_selected:undefined,vertical:false,boats:{PB:false,DT:false,SM:false,BS:false,AC:false}};
         this.createtable = this.createtable.bind(this);
         this.highlightCells = this.highlightCells.bind(this);
         this.selectBoat = this.selectBoat.bind(this);
@@ -20,7 +20,7 @@ class Board extends Component{
         if(this.state.vertical){
             var z = x+parseInt(this.state.selection);
             for(var i=x;i<z && i<10;i++){
-                if(document.getElementById("board"+(10*i+y)).style.background!=="red"){
+                if(this.state.filled.indexOf(10*i+y)<0){
                     document.getElementById("board"+(10*i+y)).style.background = 'white';
                 }
             }
@@ -28,7 +28,7 @@ class Board extends Component{
         else{
             z = y+parseInt(this.state.selection);
             for(var j=y;j<z && j<10;j++){
-                if(document.getElementById("board"+(10*x+j)).style.background!=='red'){
+                if(this.state.filled.indexOf(10*x+j)<0){
                     document.getElementById("board"+(10*x+j)).style.background = 'white';
                 }
             }
@@ -41,16 +41,22 @@ class Board extends Component{
         if(this.state.vertical){
             var z = x+parseInt(this.state.selection);
             for(var i=x;i<z && i<10;i++){
-                if(document.getElementById("board"+(10*i+y)).style.background !== 'red'){
+                if(this.state.filled.indexOf(10*i+y)<0){
                     document.getElementById("board"+(10*i+y)).style.background = '#007bff';
+                }
+                else{
+                    document.getElementById("board"+(10*i+y)).style.background = 'red';
                 }
             }
         }
         else{
             z = y+parseInt(this.state.selection);
             for(var j=y;j<z&& j<10;j++){
-                if(document.getElementById("board"+(x*10+j)).style.background!=="red"){
+                if(this.state.filled.indexOf(x*10+j)<0){
                     document.getElementById("board"+(x*10+j)).style.background = '#007bff';
+                }
+                else{
+                    document.getElementById("board"+(x*10+j)).style.background = 'red';
                 }
             }
         }
@@ -66,6 +72,9 @@ class Board extends Component{
             if(z<10){
                 for(var i=x;i<z;i++){
                     document.getElementById("board"+(10*i+y)).style.background = 'red';
+                    let filled = this.state.filled;
+                    filled.push(10*i+y);
+                    this.setState({filled:filled});
                 }
                 let boats = this.state.boats;
                 boats[this.state.boat_selected]=true;
@@ -77,6 +86,10 @@ class Board extends Component{
             if(z<10){
                 for(var j=y;j<z;j++){
                     document.getElementById("board"+(x*10+j)).style.background = 'red';
+                    let filled = this.state.filled;
+                    filled.push(x*10+j);
+                    this.setState({filled:filled});
+                    console.log(this.state.filled);
                 }
                 let boats = this.state.boats;
                 boats[this.state.boat_selected]=true;
