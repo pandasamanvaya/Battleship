@@ -26,11 +26,10 @@ contract Battleship{
         owner = msg.sender;
     }
 
-    Game game;
+    Game public game;
 
     //Events
     event NewGame(address creator);
-    event MoneyRequired(uint money);
     event PlayerJoinedGame(address player);
     event GameStartTime(uint time);
     event GameBoardInitSuccess(address player);
@@ -41,7 +40,7 @@ contract Battleship{
 
     function newGame() public{
         require(msg.sender == owner, "Only owner can create new Game");
-        game.threshold = 20000;
+        game.threshold = 4 ether;
         game.duration = 60; //60s for timeout
         game.player1_hits = 0;
         game.player2_hits = 0;
@@ -53,8 +52,6 @@ contract Battleship{
         require(msg.sender!=game.player1 && msg.sender!=game.player2, "Already in game");
         require(msg.value>=game.threshold, "Insufficient balance");
         require(game.player1 == address(0) || game.player2 == address(0), "Game in progress");
-
-        emit MoneyRequired(game.threshold);
 
         if(game.player1==address(0))
             game.player1 = msg.sender;
@@ -84,8 +81,6 @@ contract Battleship{
         if(SquareState.Empty == state){
             return " ";
         }
-        //require(InBounds(x,y));
-
     }
     
     function isValidBoard(SquareState[10][10] memory _board) public pure returns(bool){
@@ -145,6 +140,7 @@ contract Battleship{
         require(x>0 && x<10 && y>0 && y<10, "Invalid move");
         require(game.winner == address(0), "Game already has a winner");
         require(game.turn == msg.sender, "Not your turn");
+        require(now-game.timelock <= game.duration, "Move TimedOut");
 
         if(msg.sender==game.player1)
             game.board_guess_1[x][y] = SquareState.O;
@@ -158,6 +154,7 @@ contract Battleship{
 
     function reveal_move(uint8 x, uint8 y,string memory _salt) public returns(string){
         require(x>0 && x<10 && y>0 && y<10, "Invalid move");
+        require(now-game.timelock <= game.duration, "Late in revealing move");
 
         if(msg.sender==game.player1){
             if(game.board_1[x][y] == keccak256(abi.encodePacked(tostring(game.board_guess_2[x][y]),_salt)) &&
@@ -184,12 +181,16 @@ contract Battleship{
 
     }
 
-    function set_winner() public{
+    function check_n_set_winner() public{
         if(game.winner == address(0)){
-            if(game.player1_hits >= 17)
+            if(game.player1_hits >= 17){
                 game.winner = game.player1;
-            else if(game.player2_hits >= 17)
+                game.winner.transfer(address(this).balance);
+            }
+            else if(game.player2_hits >= 17){
                 game.winner = game.player2;
+                game.winner.transfer(address(this).balance);
+            }
         }
         emit GameWinner(game.winner);
     }
