@@ -3,11 +3,11 @@ var BattleShip = artifacts.require("Battleship");
 const NEW_GAME_EVENT = "NewGame";
 const PLAYER_JOINED_EVENT = "PlayerJoinedGame";
 const PLAYER_MADE_MOVE_EVENT = "PlayerMadeMove";
+const PLAYER_HIT_MOVE_EVENT = "PlayerMadeAHit";
 const GAME_START_EVENT = "GameStartTime";
 const GAME_BOARD_INIT_EVENT = "GameBoardInitSuccess";
 const GAME_WINNER = "GameWinner";
 const GAME_TIMED_OUT = "TimedOut";
-const GAME_HIT_MOVE_EVENT = "PlayerMadeAHit";
 
 function wait(time){
    var start = new Date().getTime();
@@ -141,29 +141,72 @@ contract('Battleship', function(accounts) {
 
 	});
 
-	// it("player should be able to commit move", async() => {
+	it("player should be able to commit move", async() => {
 		
-	// 	var battleship = await BattleShip.new();
-	// 	await battleship.newGame({from:accounts[0]});
-	// 	let result = await battleship.joinGame({from:accounts[1], value:web3.utils.toWei('4', 'ether')});
-	// 	eventArgs = getEventArgs(result, PLAYER_JOINED_EVENT);
-	// 	assert.isTrue(eventArgs !== false, "Player one didn't join game");
+		var battleship = await BattleShip.new();
+		var salt1 = "dd7d33879073248f2a29f4c5dfe30dff35480dd389e36359e3dd4a501a8c9812";
+		var salt2 = "293485a756665aaf25c949f2d372c5c51b83ea77b642660a62b8882a758934ec";
 
-	// 	result = await battleship.joinGame({from:accounts[2], value:web3.utils.toWei('4', 'ether')});
-	// 	eventArgs = getEventArgs(result, PLAYER_JOINED_EVENT);
-	// 	assert.isTrue(eventArgs !== false, "Player two didn't join game");
+		await battleship.newGame({from:accounts[0]});
+		let result = await battleship.joinGame({from:accounts[1], value:web3.utils.toWei('4', 'ether')});
+		eventArgs = getEventArgs(result, PLAYER_JOINED_EVENT);
+		assert.isTrue(eventArgs !== false, "Player one didn't join game");
 
-	// 	var board1 = [12,13,14,7,8,32,33,34,76,77,78,79,50,51,52,53,54];
-	// 	result = await battleship.isValidBoard(board1, {from:accounts[1]})
-	// 	assert.isTrue(result !== false, "Board not initialized for player 1");
+		result = await battleship.joinGame({from:accounts[2], value:web3.utils.toWei('4', 'ether')});
+		eventArgs = getEventArgs(result, PLAYER_JOINED_EVENT);
+		assert.isTrue(eventArgs !== false, "Player two didn't join game");
+
+		var board1 = [12,13,14,7,8,32,33,34,76,77,78,79,50,51,52,53,54];
+		result = await battleship.initialize_board(board1, salt1, {from:accounts[1]})
+		eventArgs = getEventArgs(result, GAME_BOARD_INIT_EVENT);
+		assert.equal(eventArgs.player, accounts[1], "Board not initialized for player 1");
 		
-	// 	var board2 = [21,22,51,52,53,71,72,73,5,6,7,8,94,95,96,97,98];
-	// 	result = await battleship.isValidBoard(board2, {from:accounts[2]})
-	// 	assert.isTrue(result !== false, "Board not initialized for player 2");
+		var board2 = [21,22,51,52,53,71,72,73,5,6,7,8,94,95,96,97,98];
+		result = await battleship.initialize_board(board2, salt2, {from:accounts[2]})
+		eventArgs = getEventArgs(result, GAME_BOARD_INIT_EVENT);
+		assert.equal(eventArgs.player, accounts[2], "Board not initialized for player 2");
 
-	// 	result = await battleship.
-	// });
+
+		result = await battleship.commit_move(1,2, {from:accounts[1]});
+		eventArgs = getEventArgs(result, PLAYER_MADE_MOVE_EVENT);
+		assert.equal(eventArgs.player, accounts[1], "Board not initialized for player 2");
+
+	});
+	
+	it("player1 should reveal move", async() => {
 		
+		var battleship = await BattleShip.new();
+		var salt1 = "dd7d33879073248f2a29f4c5dfe30dff35480dd389e36359e3dd4a501a8c9812";
+		var salt2 = "293485a756665aaf25c949f2d372c5c51b83ea77b642660a62b8882a758934ec";
+
+		await battleship.newGame({from:accounts[0]});
+		let result = await battleship.joinGame({from:accounts[1], value:web3.utils.toWei('4', 'ether')});
+		eventArgs = getEventArgs(result, PLAYER_JOINED_EVENT);
+		assert.isTrue(eventArgs !== false, "Player one didn't join game");
+
+		result = await battleship.joinGame({from:accounts[2], value:web3.utils.toWei('4', 'ether')});
+		eventArgs = getEventArgs(result, PLAYER_JOINED_EVENT);
+		assert.isTrue(eventArgs !== false, "Player two didn't join game");
+
+		var board1 = [12,13,14,7,8,32,33,34,76,77,78,79,50,51,52,53,54];
+		result = await battleship.initialize_board(board1, salt1, {from:accounts[1]})
+		eventArgs = getEventArgs(result, GAME_BOARD_INIT_EVENT);
+		assert.equal(eventArgs.player, accounts[1], "Board not initialized for player 1");
+		
+		var board2 = [21,22,51,52,53,71,72,73,5,6,7,8,94,95,96,97,98];
+		result = await battleship.initialize_board(board2, salt2, {from:accounts[2]})
+		eventArgs = getEventArgs(result, GAME_BOARD_INIT_EVENT);
+		assert.equal(eventArgs.player, accounts[2], "Board not initialized for player 2");
+
+
+		result = await battleship.commit_move(2,1, {from:accounts[1]});
+		eventArgs = getEventArgs(result, PLAYER_MADE_MOVE_EVENT);
+		assert.equal(eventArgs.player, accounts[1], "Board not initialized for player 2");
+
+		result = await battleship.reveal_move(2,1, salt2, {from:accounts[2]});
+		eventArgs = getEventArgs(result, PLAYER_HIT_MOVE_EVENT);
+		assert.equal(eventArgs.status, "Hit", "Player1 didn't hit");
+	});
 });
 
 function getEventArgs(transaction_result, event_name) {

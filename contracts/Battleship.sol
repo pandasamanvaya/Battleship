@@ -159,7 +159,7 @@ contract Battleship{
     function append(string a, string b) public pure returns (string){
         return string(abi.encodePacked(a, b));
     } 
-    
+
     function initialize_board(uint[17] _board,string _salt) public {
         if(msg.sender==game.player1){
             require(isValidBoard(_board), "Invalid Board(Player 1)");
@@ -200,30 +200,37 @@ contract Battleship{
     function reveal_move(uint8 x, uint8 y,string _salt) public returns(string){
         require(x>0 && x<10 && y>0 && y<10, "Invalid move");
         require(now-game.timelock <= game.duration, "Late in revealing move");
-
+        bool hit = false;
         if(msg.sender==game.player1){
-            if(game.board_1[x][y] == keccak256(abi.encodePacked(tostring(game.board_guess_2[x][y]),_salt)) &&
-                game.board_guess_2[x][y] == SquareState.O){
-                game.board_guess_2[x][y] = SquareState.X;
-                game.player2_hits++;
-                emit PlayerMadeAHit(msg.sender, x, y, "Hit");
+            for(uint i=0; i<17; i++){
+                if(game.board_1[i] == keccak256(abi.encodePacked(append("X", intToString(10*x+y)),_salt)) &&
+                    game.board_guess_2[x][y] == SquareState.O){
+                    game.board_guess_2[x][y] = SquareState.X;
+                    game.player2_hits++;
+                    hit = true;
+                    emit PlayerMadeAHit(msg.sender, x, y, "Hit");
+                    break;
             }
-            else 
+         }
+            if(!hit)
                 emit PlayerMadeAHit(msg.sender, x, y, "Miss");
             return tostring(game.board_guess_2[x][y]);
         }
         if(msg.sender==game.player2){
-            if(game.board_2[x][y] == keccak256(abi.encodePacked(tostring(game.board_guess_1[x][y]),_salt))&&
-                game.board_guess_1[x][y] == SquareState.O){
-                game.board_guess_1[x][y] = SquareState.X;
-                game.player1_hits++;
-                emit PlayerMadeAHit(msg.sender, x, y, "Hit");
+            for(i=0; i<17; i++){
+                if(game.board_2[i] == keccak256(abi.encodePacked(append("X", intToString(10*x+y)),_salt)) &&
+                    game.board_guess_1[x][y] == SquareState.O){
+                    game.board_guess_1[x][y] = SquareState.X;
+                    game.player1_hits++;
+                    hit = true;
+                    emit PlayerMadeAHit(msg.sender, x, y, "Hit");
+                    break;
             }
-            else 
+         }
+            if(!hit)
                 emit PlayerMadeAHit(msg.sender, x, y, "Miss");
             return tostring(game.board_guess_1[x][y]);
         }
-
     }
 
     function check_n_set_winner() public{
