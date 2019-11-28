@@ -148,17 +148,17 @@ contract Battleship{
 
     function initialize_board(uint[17] _board,string _salt) public {
         if(msg.sender==game.player1){
-
-            emit NotEmptyBoard(false);
-            require(isEmpty(game.board_1), "Board already initialized(Player 1)");
             require(isValidBoard(_board), "Invalid Board(Player 1)");
+            require(isEmpty(game.board_1), "Board already initialized(Player 1)");
             uint k=0;
             for(uint8 i=0;i<10;i++){
                 for(uint8 j=0;j<10;j++){
-                    if(_board[k++] == j+10*i)
-                        game.board_1[i][j] = keccak256(abi.encodePacked(tostring(SquareState.X),_salt));
+                    if(_board[k] == j+10*i){
+                        k++;
+                        game.board_1[i][j] = keccak256(abi.encodePacked("X",_salt));
+                    }
                     else
-                        game.board_1[i][j] = keccak256(abi.encodePacked(tostring(SquareState.Empty),_salt));
+                        game.board_1[i][j] = keccak256(abi.encodePacked("",_salt));
                 }
             }
             
@@ -169,10 +169,12 @@ contract Battleship{
             k=0;
             for(i=0;i<10;i++){
                 for(j=0;j<10;j++){
-                    if(_board[k++] == j+10*i)
-                        game.board_2[i][j] = keccak256(abi.encodePacked(tostring(SquareState.X),_salt));
+                    if(_board[k] == j+10*i){
+                        k++;
+                        game.board_2[i][j] = keccak256(abi.encodePacked("X",_salt));
+                    }
                     else
-                        game.board_2[i][j] = keccak256(abi.encodePacked(tostring(SquareState.Empty),_salt));
+                        game.board_2[i][j] = keccak256(abi.encodePacked("",_salt));
                 }
             }
         }
