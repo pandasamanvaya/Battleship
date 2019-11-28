@@ -22,7 +22,7 @@ contract Battleship{
         address winner;        
     }
     
-    constructor() public payable {
+    constructor() public {
         owner = msg.sender;
     }
 
@@ -83,7 +83,7 @@ contract Battleship{
         }
     }
     
-    function isValidBoard(SquareState[10][10] memory _board) public pure returns(bool){
+    function isValidBoard(SquareState[10][10] _board) public pure returns(bool){
         
         for(uint i=0; i < 10; i++){
             int dir_x=0; int dir_y=0;
@@ -103,7 +103,7 @@ contract Battleship{
         return true;
     }
     
-    function isEmpty(bytes32[10][10] memory _board) public pure returns(bool){
+    function isEmpty(bytes32[10][10] _board) public pure returns(bool){
         for(uint8 i=0;i<10;i++){
             for(uint8 j=0;j<10;j++){
                 if(_board[i][j]!=bytes32(""))
@@ -113,7 +113,7 @@ contract Battleship{
         return true;
     }
 
-    function initialize_board(SquareState[10][10] memory _board,string memory _salt) public {
+    function initialize_board(SquareState[10][10] _board,string _salt) public {
         if(msg.sender==game.player1){
             require(isEmpty(game.board_1), "Board already initialized(Player 1)");
             require(isValidBoard(_board), "Invalid Board(Player 1)");
@@ -152,7 +152,7 @@ contract Battleship{
         emit PlayerMadeMove(msg.sender, x, y);
     }
 
-    function reveal_move(uint8 x, uint8 y,string memory _salt) public returns(string){
+    function reveal_move(uint8 x, uint8 y,string _salt) public returns(string){
         require(x>0 && x<10 && y>0 && y<10, "Invalid move");
         require(now-game.timelock <= game.duration, "Late in revealing move");
 

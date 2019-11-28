@@ -63,6 +63,8 @@ class Board extends Component{
     }
 
     setBoat(event){
+        if(this.state.selection===1)
+            return;
         if(this.state.boats[this.state.boat_selected])
             return;
         var x = parseInt(event.target.attributes.x.nodeValue);
@@ -70,12 +72,12 @@ class Board extends Component{
         if(this.state.vertical){
             var z = x+parseInt(this.state.selection);
             if(z<10){
-                for(var i=x;i<z;i++){
+                for(let i=x;i<z;i++){
                     if(this.state.filled.indexOf(10*i+y)>0){
                         return;
                     }
                 }
-                for(var i=x;i<z;i++){
+                for(let i=x;i<z;i++){
                     document.getElementById("board"+(10*i+y)).style.background = 'red';
                     let filled = this.state.filled;
                     filled.push(10*i+y);
@@ -89,12 +91,12 @@ class Board extends Component{
         else{
             z = y+parseInt(this.state.selection);
             if(z<10){
-                for(var j=y;j<z;j++){
+                for(let j=y;j<z;j++){
                     if(this.state.filled.indexOf(x*10+j)>0){
                         return;
                     }
                 }
-                for(var j=y;j<z;j++){
+                for(let j=y;j<z;j++){
                     document.getElementById("board"+(x*10+j)).style.background = 'red';
                     let filled = this.state.filled;
                     filled.push(x*10+j);
@@ -141,24 +143,27 @@ class Board extends Component{
         return(
             <div className="container">
                 <div className="row">
-                    <div className="col-md-8">
+                    <div className="col-md-6">
                         {this.createtable("board")}
                     </div>
-                    <div className="col-md-4">
-                        <ul>
-                            <li className="list-unstyled" onClick={this.selectBoat}><Button variant="danger" value={2} boat="PB">Patrol Boat</Button></li>
-                            <li className="list-unstyled" onClick={this.selectBoat}><Button variant="danger" value={3} boat="SM">Submarine</Button></li>
-                            <li className="list-unstyled" onClick={this.selectBoat}><Button variant="danger" value={3} boat="DT">Destroyer</Button></li>
-                            <li className="list-unstyled" onClick={this.selectBoat}><Button variant="danger" value={4} boat="BS">Battleship</Button></li>
-                            <li className="list-unstyled" onClick={this.selectBoat}><Button variant="danger" value={5} boat="AC">Aircraft Carrier</Button></li>
-                            <li className="list-unstyled"><Button variant="success" onClick={this.rotateBoat}>Rotate</Button></li>
-                        </ul>
+                    <div className="col-md-6">
+                        {this.createtable("guess")}
                     </div>
                 </div>
                 <br></br>
                 <div className="row">
-                    <div className="col-md-8">
-                        {this.createtable("guess")}
+                    <div className="col-md-6">
+                        <ul className="list-inline">
+                            <li className="list-unstyled list-inline-item" onClick={this.selectBoat}><Button variant="secondary" value={2} boat="PB">Patrol Boat</Button></li>
+                            <li className="list-unstyled list-inline-item" onClick={this.selectBoat}><Button variant="secondary" value={3} boat="SM">Submarine</Button></li>
+                            <li className="list-unstyled list-inline-item" onClick={this.selectBoat}><Button variant="secondary" value={3} boat="DT">Destroyer</Button></li>
+                            <li className="list-unstyled list-inline-item" onClick={this.selectBoat}><Button variant="secondary" value={4} boat="BS">Battleship</Button></li>
+                            <li className="list-unstyled list-inline-item" onClick={this.selectBoat}><Button variant="secondary" value={5} boat="AC">Aircraft Carrier</Button></li>
+                            <li className="list-unstyled list-inline-item"><Button variant="success" onClick={this.rotateBoat}>Rotate</Button></li>
+                            { this.state.filled.length === 17 &&
+                                <li className="list-unstyled list-inline-item" onClick={this.sendBoard}><Button variant="warning">Join a game</Button></li>
+                            }
+                        </ul>
                     </div>
                 </div>
             </div>
