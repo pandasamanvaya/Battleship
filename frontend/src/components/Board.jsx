@@ -124,12 +124,13 @@ class Board extends Component{
     sendBoard(event){
         let web3 = new Web3('ws://127.0.0.1:8545');
         let contract = new web3.eth.Contract(JSON.parse(sessionStorage.getItem('abi')),sessionStorage.getItem('address'));
-        let board_construct = new Array(10).fill(new Array(10).fill(0));
-        for(let i=0;i<this.state.filled.length;i++){
-            console.log(Math.floor((this.state.filled[i])/10));
-            board_construct[Math.floor((this.state.filled[i])/10)][(this.state.filled[i])%10]=1;
-        }
-        contract.methods.initialize_board(board_construct,sessionStorage.getItem('salt')).send({from:sessionStorage.getItem('account'),gas:200000})      
+        // let board_construct = new Array(10).fill(new Array(10).fill(0));
+        // for(let i=0;i<this.state.filled.length;i++){
+        //     console.log(Math.floor((this.state.filled[i])/10));
+        //     board_construct[Math.floor((this.state.filled[i])/10)][(this.state.filled[i])%10]=1;
+        // }
+        console.log(this.state.filled.sort());
+        contract.methods.initialize_board(this.state.filled.sort(),sessionStorage.getItem('salt')).send({from:sessionStorage.getItem('account'), gas:web3.utils.toWei('2','Gwei')});      
     }
 
     createtable(name){
