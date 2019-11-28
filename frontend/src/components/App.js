@@ -37,10 +37,16 @@ class App extends Component {
 			console.log(res);
 			sessionStorage.setItem('address',res["address"]);
 			sessionStorage.setItem('abi',JSON.stringify(res["abi"]));
+			sessionStorage.setItem('salt',res["salt"]);
 			var state = this.state;
 			state['address'] = res["address"];
 			this.setState(state);
-			this.startGame();
+			const web3 = new Web3("ws://127.0.0.1:8545");
+			let abi = JSON.parse(sessionStorage.getItem('abi'));
+			let address = sessionStorage.getItem('address');
+			let account = sessionStorage.getItem('account');
+			let contract = new web3.eth.Contract(abi,address);
+			contract.methods.joinGame().send({from:account, value: web3.utils.toWei("4",'ether')});
 		});
 	}
 

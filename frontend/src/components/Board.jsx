@@ -1,4 +1,5 @@
 import React,{ Component } from "react";
+import Web3 from 'web3'
 import {ButtonToolbar, Button} from "react-bootstrap";
 
 class Board extends Component{
@@ -11,6 +12,7 @@ class Board extends Component{
         this.setBoat = this.setBoat.bind(this);
         this.rotateBoat = this.rotateBoat.bind(this);
         this.normalizeCells = this.normalizeCells.bind(this);
+        this.sendBoard = this.sendBoard.bind(this);
     }
 
     highlightCells(event){
@@ -71,7 +73,7 @@ class Board extends Component{
         var y = parseInt(event.target.attributes.y.nodeValue);
         if(this.state.vertical){
             var z = x+parseInt(this.state.selection);
-            if(z<10){
+            if(z<=10){
                 for(let i=x;i<z;i++){
                     if(this.state.filled.indexOf(10*i+y)>0){
                         return;
@@ -90,7 +92,7 @@ class Board extends Component{
         }
         else{
             z = y+parseInt(this.state.selection);
-            if(z<10){
+            if(z<=10){
                 for(let j=y;j<z;j++){
                     if(this.state.filled.indexOf(x*10+j)>0){
                         return;
@@ -117,6 +119,17 @@ class Board extends Component{
     rotateBoat(event){
         this.setState({vertical:!(this.state.vertical)});
         console.log(this.state.vertical);
+    }
+
+    sendBoard(event){
+        let web3 = new Web3('ws://127.0.0.1:8545');
+        let contract = new web3.eth.Contract(JSON.parse(sessionStorage.getItem('abi')),sessionStorage.getItem('address'));
+        let board_construct = new Array(10).fill(new Array(10).fill(0));
+        for(let i=0;i<this.state.filled.length;i++){
+            console.log(Math.floor((this.state.filled[i])/10));
+            board_construct[Math.floor((this.state.filled[i])/10)][(this.state.filled[i])%10]=1;
+        }
+        contract.methods.initialize_board(board_construct,sessionStorage.getItem('salt')).send({from:sessionStorage.getItem('account'),gas:200000})      
     }
 
     createtable(name){

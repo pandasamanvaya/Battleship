@@ -50,10 +50,11 @@ def add_to_database(address):
         gc = last.game_contract
     else:
         gc = deploy_contract(game_contract)
-    player = Player(address=address,game_contract=gc,randomseed=hex(random.randint(1,2**128))[2:])
+    randomseed = hex(random.randint(1,2**128))[2:]
+    player = Player(address=address,game_contract=gc,randomseed=randomseed)
     db.session.add(player)
     db.session.commit()
-    return Response(json.dumps({'address':gc,'abi':game_contract['abi']}), status = 200, mimetype = 'application/json')
+    return Response(json.dumps({'address':gc,'abi':game_contract['abi'],'salt':randomseed}), status = 200, mimetype = 'application/json')
 
 if __name__ == "__main__":
     app.run(port=8000,debug=True,host="127.0.0.1")
