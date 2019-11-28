@@ -8,8 +8,8 @@ contract Battleship{
     struct Game{
         address player1;
         address player2;
-        bytes32 [10][10] board_1;
-        bytes32 [10][10] board_2;
+        bytes32 [17] board_1;
+        bytes32 [17] board_2;
         SquareState[10][10] board_guess_1; // Stores guesses made by player 1
         SquareState[10][10] board_guess_2; // Stores guesses made by player 2
         address turn;
@@ -47,12 +47,8 @@ contract Battleship{
         game.player1_hits = 0;
         game.player2_hits = 0;
         for(uint8 i=0;i<10;i++){
-            for(uint8 j=0;j<10;j++)
-                game.board_1[i][j] = bytes32("");
-        }
-        for(i=0;i<10;i++){
-            for(j=0;j<10;j++)
-                game.board_2[i][j] = bytes32("");
+            game.board_1[i] = bytes32("");
+            game.board_2[i] = bytes32("");
         }
 
         emit NewGame(msg.sender);
@@ -129,53 +125,53 @@ contract Battleship{
         return true;
     }
     
-    function isEmpty(bytes32[10][10] _board) public returns(bool){
-        for(uint8 i=0;i<10;i++){
-            for(uint8 j=0;j<10;j++){
-                if(_board[i][j]!=bytes32("")){
-                    emit NotEmptyBoard(true);
-                    return false;
-                }
+    function isEmpty(bytes32[17] _board) public returns(bool){
+        for(uint8 i=0;i<17;i++){
+            if(_board[i]!=bytes32("")){
+                emit NotEmptyBoard(true);
+                return false;
             }
         }
         emit NotEmptyBoard(false);
         return true;
     }
 
-    function getBoard1() public view returns(bytes32[10][10]){
-        return game.board_1;
+    function getBoard() public view returns(bytes32[17], bytes32[17]){
+        return (game.board_1, game.board_2);
     }
 
+    function intToString(uint v) public pure returns (string) {
+        uint maxlength = 100;
+        bytes memory reversed = new bytes(maxlength);
+        uint i = 0;
+        while (v != 0) {
+            uint remainder = v % 10;
+            v = v / 10;
+            reversed[i++] = byte(48 + remainder);
+        }
+        bytes memory s = new bytes(i + 1);
+        for (uint j = 0; j <= i; j++) {
+            s[j] = reversed[i - j];
+        }
+        return string(s);
+    }
+
+    function append(string a, string b) public pure returns (string){
+        return string(abi.encodePacked(a, b));
+    } 
+    
     function initialize_board(uint[17] _board,string _salt) public {
         if(msg.sender==game.player1){
             require(isValidBoard(_board), "Invalid Board(Player 1)");
             require(isEmpty(game.board_1), "Board already initialized(Player 1)");
-            uint k=0;
-            for(uint8 i=0;i<10;i++){
-                for(uint8 j=0;j<10;j++){
-                    if(_board[k] == j+10*i){
-                        k++;
-                        game.board_1[i][j] = keccak256(abi.encodePacked("X",_salt));
-                    }
-                    else
-                        game.board_1[i][j] = keccak256(abi.encodePacked("",_salt));
-                }
-            }
-            
+            for(uint i=0; i<17; i++)
+                game.board_1[i] = keccak256(abi.encodePacked(append("X",intToString(_board[i])),_salt));
         }
         else if(msg.sender==game.player2){
             require(isEmpty(game.board_2), "Board already initialized(Player 2)");
             require(isValidBoard(_board), "Invalid Board(Player 2)");
-            k=0;
-            for(i=0;i<10;i++){
-                for(j=0;j<10;j++){
-                    if(_board[k] == j+10*i){
-                        k++;
-                        game.board_2[i][j] = keccak256(abi.encodePacked("X",_salt));
-                    }
-                    else
-                        game.board_2[i][j] = keccak256(abi.encodePacked("",_salt));
-                }
+            for(i=0;i<17;i++){
+                game.board_2[i] = keccak256(abi.encodePacked(append("X",intToString(_board[i])),_salt));
             }
         }
         emit GameBoardInitSuccess(msg.sender);
