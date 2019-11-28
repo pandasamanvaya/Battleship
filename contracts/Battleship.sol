@@ -37,6 +37,8 @@ contract Battleship{
     event TimedOut(uint cur_time, uint prev_time, uint diff, uint duration);
     event GameWinner(address winner);
     event PlayerMadeAHit(address player, uint8 x, uint8 y, string status);
+    event NotValidBoard(uint cell, uint x, uint y);
+    event NotEmptyBoard(bool status);
 
     function newGame() public{
         require(msg.sender == owner, "Only owner can create new Game");
@@ -44,6 +46,15 @@ contract Battleship{
         game.duration = 60; //60s for timeout
         game.player1_hits = 0;
         game.player2_hits = 0;
+        for(uint8 i=0;i<10;i++){
+            for(uint8 j=0;j<10;j++)
+                game.board_1[i][j] = bytes32("");
+        }
+        for(i=0;i<10;i++){
+            for(j=0;j<10;j++)
+                game.board_2[i][j] = bytes32("");
+        }
+
         emit NewGame(msg.sender);
     }
 
@@ -82,44 +93,72 @@ contract Battleship{
             return " ";
         }
     }
-    
-    function isValidBoard(SquareState[10][10] _board) public pure returns(bool){
-        
-        for(uint i=0; i < 10; i++){
-            int dir_x=0; int dir_y=0;
-            for(uint j=0; j < 10; j++){
-                if(_board[i][j] == SquareState.X){
-                    if((i+1<10 && _board[i+1][j] == SquareState.X)||
-                        (i-1>0 && _board[i-1][j] == SquareState.X))
-                        dir_y++;
-                    if((j+1<10 && _board[i][j+1] == SquareState.X)||
-                        (j-1>0 && _board[i][j-1] == SquareState.X))
-                        dir_x++;
-                    if(dir_x >0 && dir_y >0)
-                        return false;
+    function extract_ships(uint[17] _board) public pure returns(uint[5][5]){
+        uint[5][5] memory ships;
+        uint i=0; uint k=0;
+        while(i < 17){
+            uint j = 1;
+            while(j+i < 17){
+                if(_board[i]+1 == _board[i+j] || _board[j] == _board[i]+10*j)
+                    j++;
+                else
+                    break;
+            }
+            for(uint l = i; l < j; l++)
+                ships[k][l-i] = _board[l];
+            i = j;
+            k++;
+        }
+        return ships;
+    }
+
+    function isValidBoard(uint[17] _board) public returns(bool){    
+        for(uint i=0; i<17; i++){
+            uint dir_x = 0; uint dir_y = 0;
+            for(uint j=0; j < 17; j++){
+                if(_board[i]+1 == _board[j] || _board[i]-1 == _board[j])
+                    dir_x++;
+                if(_board[i]+10 == _board[j] || _board[i]-10 == _board[j])
+                    dir_y++;
+                if(dir_x > 0 && dir_y > 0){
+                    emit NotValidBoard(_board[i], dir_x, dir_y);
+                    return false;
                 }
             }
         }
         return true;
     }
     
-    function isEmpty(bytes32[10][10] _board) public pure returns(bool){
+    function isEmpty(bytes32[10][10] _board) public returns(bool){
         for(uint8 i=0;i<10;i++){
             for(uint8 j=0;j<10;j++){
-                if(_board[i][j]!=bytes32(""))
+                if(_board[i][j]!=bytes32("")){
+                    emit NotEmptyBoard(true);
                     return false;
+                }
             }
         }
+        emit NotEmptyBoard(false);
         return true;
     }
 
-    function initialize_board(SquareState[10][10] _board,string _salt) public {
+    function getBoard1() public view returns(bytes32[10][10]){
+        return game.board_1;
+    }
+
+    function initialize_board(uint[17] _board,string _salt) public {
         if(msg.sender==game.player1){
+
+            emit NotEmptyBoard(false);
             require(isEmpty(game.board_1), "Board already initialized(Player 1)");
             require(isValidBoard(_board), "Invalid Board(Player 1)");
+            uint k=0;
             for(uint8 i=0;i<10;i++){
                 for(uint8 j=0;j<10;j++){
-                    game.board_1[i][j] = keccak256(abi.encodePacked(tostring(_board[i][j]),_salt));
+                    if(_board[k++] == j+10*i)
+                        game.board_1[i][j] = keccak256(abi.encodePacked(tostring(SquareState.X),_salt));
+                    else
+                        game.board_1[i][j] = keccak256(abi.encodePacked(tostring(SquareState.Empty),_salt));
                 }
             }
             
@@ -127,9 +166,13 @@ contract Battleship{
         else if(msg.sender==game.player2){
             require(isEmpty(game.board_2), "Board already initialized(Player 2)");
             require(isValidBoard(_board), "Invalid Board(Player 2)");
+            k=0;
             for(i=0;i<10;i++){
                 for(j=0;j<10;j++){
-                    game.board_2[i][j] = keccak256(abi.encodePacked(tostring(_board[i][j]),_salt));
+                    if(_board[k++] == j+10*i)
+                        game.board_2[i][j] = keccak256(abi.encodePacked(tostring(SquareState.X),_salt));
+                    else
+                        game.board_2[i][j] = keccak256(abi.encodePacked(tostring(SquareState.Empty),_salt));
                 }
             }
         }
@@ -142,10 +185,14 @@ contract Battleship{
         require(game.turn == msg.sender, "Not your turn");
         require(now-game.timelock <= game.duration, "Move TimedOut");
 
-        if(msg.sender==game.player1)
+        if(msg.sender==game.player1){
+            require(!isEmpty(game.board_2), "Commiting move before player2 initialized board");
             game.board_guess_1[x][y] = SquareState.O;
-        else if(msg.sender == game.player2)
+        }
+        else if(msg.sender == game.player2){
+            require(!isEmpty(game.board_1), "Commiting move before player1 initialized board");
             game.board_guess_2[x][y] = SquareState.O;
+        }
 
         game.turn = next_turn();
 
