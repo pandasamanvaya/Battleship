@@ -7,9 +7,8 @@ import {Button} from "react-bootstrap";
 class App extends Component {
 	componentDidMount() {
 		console.log(Web3.givenProvider);
-		var state = {account:null, abi:null, contract:null}
 		if(sessionStorage.getItem('account')){
-			state['account'] = sessionStorage.getItem('account');
+			this.setState({account:sessionStorage.getItem('account')});
 		}
 		else if(Web3.givenProvider){
 			const web3 = new Web3(Web3.givenProvider);
@@ -19,9 +18,8 @@ class App extends Component {
 			});
 		}
 		if(sessionStorage.getItem('address')){
-			state['address'] = sessionStorage.getItem('address');
+			this.setState({address:sessionStorage.getItem('address')})
 		}
-		this.setState(state);
 	}
 
 	async getNewContract(event) {
