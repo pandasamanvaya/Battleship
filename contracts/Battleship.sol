@@ -24,6 +24,7 @@ contract Battleship{
     
     constructor() public {
         owner = msg.sender;
+        newGame();
     }
 
     Game public game;
@@ -182,7 +183,7 @@ contract Battleship{
     }
     
     function commit_move(uint8 x, uint8 y) public {
-        require(x>0 && x<10 && y>0 && y<10, "Invalid move");
+        require(x>=0 && x<10 && y>=0 && y<10, "Invalid move");
         require(game.winner == address(0), "Game already has a winner");
         require(game.turn == msg.sender, "Not your turn");
         require(now-game.timelock <= game.duration, "Move TimedOut");
@@ -197,12 +198,13 @@ contract Battleship{
         }
 
         game.turn = next_turn();
+        game.timelock = now; 
 
         emit PlayerMadeMove(msg.sender, x, y);
     }
 
     function reveal_move(uint8 x, uint8 y,string _salt) public returns(string){
-        require(x>0 && x<10 && y>0 && y<10, "Invalid move");
+        require(x>=0 && x<10 && y>=0 && y<10, "Invalid move");
         require(now-game.timelock <= game.duration, "Late in revealing move");
         bool hit = false;
         if(msg.sender==game.player1){
@@ -218,6 +220,7 @@ contract Battleship{
          }
             if(!hit)
                 emit PlayerMadeAHit(msg.sender, x, y, "Miss");
+            check_n_set_winner();
             return tostring(game.board_guess_2[x][y]);
         }
         if(msg.sender==game.player2){
@@ -232,7 +235,8 @@ contract Battleship{
             }
          }
             if(!hit)
-                emit PlayerMadeAHit(msg.sender, x, y, "Miss");
+                emit PlayerMadeAHit(msg.sender, x, y, "Miss");   
+            check_n_set_winner();
             return tostring(game.board_guess_1[x][y]);
         }
     }

@@ -5,7 +5,7 @@ import {ButtonToolbar, Button} from "react-bootstrap";
 class Board extends Component{
     constructor(){
         super();
-        this.state = {turn:null,filled:[],sent:false,other_done:false,guess:[],selection:1,boat_selected:undefined,vertical:false,boats:{PB:false,DT:false,SM:false,BS:false,AC:false}};
+        this.state = {winner:null,turn:null,filled:[],sent:false,other_done:false,guess:[],selection:1,boat_selected:undefined,vertical:false,boats:{PB:false,DT:false,SM:false,BS:false,AC:false}};
         this.createtable = this.createtable.bind(this);
         this.highlightCells = this.highlightCells.bind(this);
         this.selectBoat = this.selectBoat.bind(this);
@@ -137,6 +137,7 @@ class Board extends Component{
         let web3 = new Web3('ws://127.0.0.1:8545');
         let contract = new web3.eth.Contract(JSON.parse(sessionStorage.getItem('abi')),sessionStorage.getItem('address'));
         contract.methods.commit_move(x,y).send({from:sessionStorage.getItem('account')});
+        this.setTurn();
     }
 
     setTurn(){
@@ -175,6 +176,8 @@ class Board extends Component{
 
         contract.events.PlayerMadeAHit((error, event)=>{ this.setTurn();console.log(event); })
         .on('data', (event)=>{
+            this.setTurn();
+            console.log(event.returnValues);
             if(event.returnValues['player']===sessionStorage.getItem('account'))
                 return;
             let x = parseInt(event.returnValues['x']);
@@ -189,55 +192,67 @@ class Board extends Component{
             let guesses = this.state.guess;
             guesses.push(10*x+y); 
             this.setState({guess:guesses});
-            this.setTurn();
         });
 
         contract.events.PlayerMadeMove((error,event)=>{console.log(event);})
         .on('data',(event)=>{
+            this.setTurn();
+            console.log(event.returnValues);
             if(event.returnValues['player']===sessionStorage.getItem('account'))
                 return;
+            
             let x = parseInt(event.returnValues['x']);
             let y = parseInt(event.returnValues['y']);            
-            contract.methods.reveal_move(x,y,sessionStorage.getItem('salt'));
-            this.setTurn();
+            contract.methods.reveal_move(x,y,sessionStorage.getItem('salt')).send({from:sessionStorage.getItem('account'), gas:4712388});
+        });
+        contract.events.GameWinner((error,event)=>{console.log(event);})
+        .on('data',(event)=>{
+            let winner = event.returnValues['winner'];
+            if(winner!=="0x0000000000000000000000000000000000000000")
+                return;
+            sessionStorage.removeItem('address');
+			sessionStorage.removeItem('abi');
+			this.setState({winner:winner});
         });
     }
 
     render(){
-        return(
-            <div className="container">
-                <div className="row">
-                    <div className="col-12">
-                        <p>{this.state.turn}</p>
+        if(!this.state.winner){
+            return(
+                <div className="container">
+                    <div className="row">
+                        <div className="col-6">
+                            <p>{this.state.turn}</p>
+                        </div>
                     </div>
-                </div>
-                <div className="row">
-                    <div className="col-6">
-                        {this.createtable("board")}
+                    <div className="row">
+                        <div className="col-6">
+                            {this.createtable("board")}
+                        </div>
+                        <br></br>
+                        <div className="col-6">
+                            {this.createtable("guess")}
+                        </div>
                     </div>
                     <br></br>
-                    <div className="col-6">
-                        {this.createtable("guess")}
+                    <div className="row">
+                        <div className="col-md-6">
+                            <ul className="list-inline">
+                                <li className="list-unstyled list-inline-item" onClick={this.selectBoat}><Button variant="secondary" value={2} boat="PB">Patrol Boat</Button></li>
+                                <li className="list-unstyled list-inline-item" onClick={this.selectBoat}><Button variant="secondary" value={3} boat="SM">Submarine</Button></li>
+                                <li className="list-unstyled list-inline-item" onClick={this.selectBoat}><Button variant="secondary" value={3} boat="DT">Destroyer</Button></li>
+                                <li className="list-unstyled list-inline-item" onClick={this.selectBoat}><Button variant="secondary" value={4} boat="BS">Battleship</Button></li>
+                                <li className="list-unstyled list-inline-item" onClick={this.selectBoat}><Button variant="secondary" value={5} boat="AC">Aircraft Carrier</Button></li>
+                                <li className="list-unstyled list-inline-item"><Button variant="success" onClick={this.rotateBoat}>Rotate</Button></li>
+                                { this.state.filled.length === 17 &&
+                                    <li className="list-unstyled list-inline-item" onClick={this.sendBoard}><Button variant="warning">Join a game</Button></li>
+                                }
+                            </ul>
+                        </div>
                     </div>
                 </div>
-                <br></br>
-                <div className="row">
-                    <div className="col-md-6">
-                        <ul className="list-inline">
-                            <li className="list-unstyled list-inline-item" onClick={this.selectBoat}><Button variant="secondary" value={2} boat="PB">Patrol Boat</Button></li>
-                            <li className="list-unstyled list-inline-item" onClick={this.selectBoat}><Button variant="secondary" value={3} boat="SM">Submarine</Button></li>
-                            <li className="list-unstyled list-inline-item" onClick={this.selectBoat}><Button variant="secondary" value={3} boat="DT">Destroyer</Button></li>
-                            <li className="list-unstyled list-inline-item" onClick={this.selectBoat}><Button variant="secondary" value={4} boat="BS">Battleship</Button></li>
-                            <li className="list-unstyled list-inline-item" onClick={this.selectBoat}><Button variant="secondary" value={5} boat="AC">Aircraft Carrier</Button></li>
-                            <li className="list-unstyled list-inline-item"><Button variant="success" onClick={this.rotateBoat}>Rotate</Button></li>
-                            { this.state.filled.length === 17 &&
-                                <li className="list-unstyled list-inline-item" onClick={this.sendBoard}><Button variant="warning">Join a game</Button></li>
-                            }
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        );
+            );
+        }
     }
 }
 export default Board;

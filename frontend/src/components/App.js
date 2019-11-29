@@ -61,9 +61,7 @@ class App extends Component {
 		const accounts = await web3.eth.getAccounts()
 		const accountnumber = Math.floor(Math.random()*9+1);
 		sessionStorage.setItem('account',accounts[accountnumber]);
-		var state = this.state;
-		state["account"] = accounts[accountnumber];
-		this.setState(state);
+		this.setState({state:accounts[accountnumber]});
 	}
 
 	constructor(props) {
