@@ -46,7 +46,13 @@ class App extends Component {
 			let address = sessionStorage.getItem('address');
 			let account = sessionStorage.getItem('account');
 			let contract = new web3.eth.Contract(abi,address);
-			contract.methods.joinGame().send({from:account, value: web3.utils.toWei("4",'ether')});
+			contract.methods.joinGame().send({from:account, value: web3.utils.toWei("4",'ether')})
+			.then(()=>{
+				contract.methods.getAddress().call()
+				.then((res)=>{
+					console.log(res);
+				})
+			});
 		});
 	}
 

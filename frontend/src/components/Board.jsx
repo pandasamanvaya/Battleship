@@ -5,7 +5,7 @@ import {ButtonToolbar, Button} from "react-bootstrap";
 class Board extends Component{
     constructor(){
         super();
-        this.state = {filled:[],guess:new Array(10).fill(new Array(10).fill('~')),selection:1,boat_selected:undefined,vertical:false,boats:{PB:false,DT:false,SM:false,BS:false,AC:false}};
+        this.state = {turn:null,filled:[],sent:false,other_done:false,guess:[],selection:1,boat_selected:undefined,vertical:false,boats:{PB:false,DT:false,SM:false,BS:false,AC:false}};
         this.createtable = this.createtable.bind(this);
         this.highlightCells = this.highlightCells.bind(this);
         this.selectBoat = this.selectBoat.bind(this);
@@ -13,6 +13,8 @@ class Board extends Component{
         this.rotateBoat = this.rotateBoat.bind(this);
         this.normalizeCells = this.normalizeCells.bind(this);
         this.sendBoard = this.sendBoard.bind(this);
+        this.guessCell = this.guessCell.bind(this);
+        this.setTurn = this.setTurn.bind(this);
     }
 
     highlightCells(event){
@@ -124,13 +126,26 @@ class Board extends Component{
     sendBoard(event){
         let web3 = new Web3('ws://127.0.0.1:8545');
         let contract = new web3.eth.Contract(JSON.parse(sessionStorage.getItem('abi')),sessionStorage.getItem('address'));
-        // let board_construct = new Array(10).fill(new Array(10).fill(0));
-        // for(let i=0;i<this.state.filled.length;i++){
-        //     console.log(Math.floor((this.state.filled[i])/10));
-        //     board_construct[Math.floor((this.state.filled[i])/10)][(this.state.filled[i])%10]=1;
-        // }
         console.log(this.state.filled.sort());
-        contract.methods.initialize_board(this.state.filled.sort(),sessionStorage.getItem('salt')).send({from:sessionStorage.getItem('account'), gas:web3.utils.toWei('2','Gwei')});      
+        contract.methods.initialize_board(this.state.filled.sort(),sessionStorage.getItem('salt')).send({from:sessionStorage.getItem('account'),gas:4712388})
+        .then((res)=>{console.log(res); this.setTurn();});      
+    }
+
+    guessCell(event){
+        var x = parseInt(event.target.attributes.x.nodeValue);
+        var y = parseInt(event.target.attributes.y.nodeValue);
+        let web3 = new Web3('ws://127.0.0.1:8545');
+        let contract = new web3.eth.Contract(JSON.parse(sessionStorage.getItem('abi')),sessionStorage.getItem('address'));
+        contract.methods.commit_move(x,y).send({from:sessionStorage.getItem('account')});
+    }
+
+    setTurn(){
+        let web3 = new Web3('ws://127.0.0.1:8545');
+        let contract = new web3.eth.Contract(JSON.parse(sessionStorage.getItem('abi')),sessionStorage.getItem('address'));
+        contract.methods.getTurn().call()
+        .then((res)=>{
+            this.setState({turn:res});
+        });
     }
 
     createtable(name){
@@ -144,7 +159,7 @@ class Board extends Component{
                     children.push(<Button onClick={this.setBoat} onMouseEnter={this.highlightCells} onMouseLeave={this.normalizeCells} id={`${name}${i*10+j}`} x={`${i}`} y={`${j}`}>~</Button>)
                 }
                 else{
-                    children.push(<Button onClick={this.guess} id={`${name}${i*10+j}`} x={`${i}`} y={`${j}`}>{this.state.guess[i][j]}</Button>)
+                    children.push(<Button onClick={this.guessCell} id={`${name}${i*10+j}`} x={`${i}`} y={`${j}`}>~</Button>)
                 }
             }
             //Create the parent and add the children
@@ -153,14 +168,55 @@ class Board extends Component{
         return table
     }
 
+    componentDidMount(){
+        let web3 = new Web3('ws://127.0.0.1:8545');
+        let contract = new web3.eth.Contract(JSON.parse(sessionStorage.getItem('abi')),sessionStorage.getItem('address'));
+        this.setTurn();
+
+        contract.events.PlayerMadeAHit((error, event)=>{ this.setTurn();console.log(event); })
+        .on('data', (event)=>{
+            if(event.returnValues['player']===sessionStorage.getItem('account'))
+                return;
+            let x = parseInt(event.returnValues['x']);
+            let y = parseInt(event.returnValues['y']);            
+            let status = event.returnValues['status'];
+            if(status==="Hit"){
+                document.getElementById("guess"+(10*x+y)).style.backgroundColor = 'yellow';
+            }
+            else{
+                document.getElementById("guess"+(10*x+y)).style.backgroundColor = 'red';
+            }
+            let guesses = this.state.guess;
+            guesses.push(10*x+y); 
+            this.setState({guess:guesses});
+            this.setTurn();
+        });
+
+        contract.events.PlayerMadeMove((error,event)=>{console.log(event);})
+        .on('data',(event)=>{
+            if(event.returnValues['player']===sessionStorage.getItem('account'))
+                return;
+            let x = parseInt(event.returnValues['x']);
+            let y = parseInt(event.returnValues['y']);            
+            contract.methods.reveal_move(x,y,sessionStorage.getItem('salt'));
+            this.setTurn();
+        });
+    }
+
     render(){
         return(
             <div className="container">
                 <div className="row">
-                    <div className="col-md-6">
+                    <div className="col-12">
+                        <p>{this.state.turn}</p>
+                    </div>
+                </div>
+                <div className="row">
+                    <div className="col-6">
                         {this.createtable("board")}
                     </div>
-                    <div className="col-md-6">
+                    <br></br>
+                    <div className="col-6">
                         {this.createtable("guess")}
                     </div>
                 </div>

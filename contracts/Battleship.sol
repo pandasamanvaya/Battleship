@@ -43,7 +43,7 @@ contract Battleship{
     function newGame() public{
         require(msg.sender == owner, "Only owner can create new Game");
         game.threshold = 4 ether;
-        game.duration = 60; //60s for timeout
+        game.duration = 600; //60s for timeout
         game.player1_hits = 0;
         game.player2_hits = 0;
         for(uint8 i=0;i<10;i++){
@@ -75,6 +75,10 @@ contract Battleship{
 
     function getAddress() public view returns(address,address){
         return (game.player1,game.player2);
+    }
+
+    function getTurn() public view returns(address){
+        return (game.turn);
     }
     
     function tostring(SquareState state) public pure returns(string memory)
