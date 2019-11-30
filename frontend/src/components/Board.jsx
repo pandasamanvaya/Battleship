@@ -207,8 +207,9 @@ class Board extends Component{
         });
         contract.events.GameWinner((error,event)=>{console.log(event);})
         .on('data',(event)=>{
+            console.log(event.returnValues);
             let winner = event.returnValues['winner'];
-            if(winner!=="0x0000000000000000000000000000000000000000")
+            if(winner==="0x0000000000000000000000000000000000000000")
                 return;
             sessionStorage.removeItem('address');
 			sessionStorage.removeItem('abi');
@@ -252,6 +253,11 @@ class Board extends Component{
                     </div>
                 </div>
             );
+        }
+        else{
+            return(
+            <p>Winner is {this.state.winner}</p>
+            )
         }
     }
 }
