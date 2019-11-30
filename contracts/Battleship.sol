@@ -44,14 +44,19 @@ contract Battleship{
     function newGame() public{
         require(msg.sender == owner, "Only owner can create new Game");
         game.threshold = 4 ether;
-        game.duration = 600; //60s for timeout
+        game.duration = 60; //60s for timeout
         game.player1_hits = 0;
         game.player2_hits = 0;
-        for(uint8 i=0;i<10;i++){
+        for(uint8 i=0;i<17;i++){
             game.board_1[i] = bytes32("");
             game.board_2[i] = bytes32("");
         }
-
+        for(i=0; i<10;i++){
+            for(uint j=0; j<10; j++){
+                game.board_guess_1[i][j] = SquareState.Empty;
+                game.board_guess_2[i][j] = SquareState.Empty;
+            }
+        }
         emit NewGame(msg.sender);
     }
 
@@ -68,10 +73,6 @@ contract Battleship{
         emit PlayerJoinedGame(msg.sender);
         if(game.turn == address(0))
             game.turn = game.player1;
-        if(game.player2 != address(0)){
-            game.timelock = now;
-            emit GameStartTime(game.timelock);
-        }
     }
 
     function getAddress() public view returns(address,address){
@@ -178,6 +179,8 @@ contract Battleship{
             for(i=0;i<17;i++){
                 game.board_2[i] = keccak256(abi.encodePacked(append("X",intToString(_board[i])),_salt));
             }
+            game.timelock = now;
+            emit GameStartTime(game.timelock);
         }
         emit GameBoardInitSuccess(msg.sender);
     }
@@ -190,10 +193,12 @@ contract Battleship{
 
         if(msg.sender==game.player1){
             require(!isEmpty(game.board_2), "Commiting move before player2 initialized board");
+            require(game.board_guess_1[x][y] == SquareState.Empty, "Already marked");
             game.board_guess_1[x][y] = SquareState.O;
         }
         else if(msg.sender == game.player2){
             require(!isEmpty(game.board_1), "Commiting move before player1 initialized board");
+            require(game.board_guess_2[x][y] == SquareState.Empty, "Already marked");
             game.board_guess_2[x][y] = SquareState.O;
         }
 
