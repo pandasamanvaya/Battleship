@@ -201,7 +201,7 @@ contract('Battleship', function(accounts) {
 			assert.include(error.message, "Invalid move");
 		}
 		try{
-			wait(30000);
+			wait(60000);
 			await battleship.commit_move(1,2, {from:accounts[1]});
 		}
 		catch(error){
@@ -302,7 +302,7 @@ contract('Battleship', function(accounts) {
 		await battleship.initialize_board(board2, salt2, {from:accounts[2]})
 
 		await battleship.commit_move(2,1, {from:accounts[1]});
-		wait(30000);
+		wait(60000);
 		try{
 			await battleship.reveal_move(2,1, salt2, {from:accounts[2]});
 		}
@@ -348,13 +348,13 @@ contract('Battleship', function(accounts) {
 
 		let prev_balance = await web3.eth.getBalance(accounts[2]);
 		let prev_value = web3.utils.fromWei(prev_balance, 'ether');
-		wait(30000);
+		wait(60000);
 		await battleship.claimTimeout();
 		let cur_balance = await web3.eth.getBalance(accounts[2]);
 		let cur_value = web3.utils.fromWei(cur_balance, 'ether');
 		assert.isTrue(cur_value-prev_value >= 7.5, "Ethers not transferred");
 	});
-		it("shouldn't be able to redeem ethers before timeout", async() => {
+	it("shouldn't be able to redeem ethers before timeout", async() => {
 		var battleship = await BattleShip.new();
 		var salt1 = "dd7d33879073248f2a29f4c5dfe30dff35480dd389e36359e3dd4a501a8c9812";
 		var salt2 = "293485a756665aaf25c949f2d372c5c51b83ea77b642660a62b8882a758934ec";
@@ -376,6 +376,41 @@ contract('Battleship', function(accounts) {
 			assert.include(error.message, "Game not yet timed out");
 		}
 	});
+
+	it("should declare player1 as winner", async() => {
+		var battleship = await BattleShip.new();
+		var salt1 = "dd7d33879073248f2a29f4c5dfe30dff35480dd389e36359e3dd4a501a8c9812";
+		var salt2 = "293485a756665aaf25c949f2d372c5c51b83ea77b642660a62b8882a758934ec";
+
+		await battleship.newGame({from:accounts[0]});
+		await battleship.joinGame({from:accounts[1], value:web3.utils.toWei('4', 'ether')});
+		await battleship.joinGame({from:accounts[2], value:web3.utils.toWei('4', 'ether')});
+
+		var board1 = [12,13,14,7,8,32,33,34,76,77,78,79,50,51,52,53,54];
+		await battleship.initialize_board(board1, salt1, {from:accounts[1]})
+		
+		var board2 = [21,22,51,52,53,71,72,73,5,6,7,8,94,95,96,97,98];
+		await battleship.initialize_board(board2, salt2, {from:accounts[2]})
+
+		var moves1 = []
+		var moves2 = []
+		for(i=0; i<17; i++){
+			moves1.push([Math.floor(board2[i]/10), board2[i]%10])
+			moves2.push([Math.floor(board1[i]/10), board1[i]%10])
+		}
+
+		for(i=0;i<16;i++){
+			await battleship.commit_move(moves1[i][0],moves1[i][1], {from:accounts[1]});
+			await battleship.reveal_move(moves1[i][0],moves1[i][1], salt2, {from:accounts[2]});
+			await battleship.commit_move(moves2[i][0],moves2[i][1], {from:accounts[2]});
+			await battleship.reveal_move(moves2[i][0],moves2[i][1], salt1, {from:accounts[1]});
+		}
+		await battleship.commit_move(moves1[16][0],moves1[16][1], {from:accounts[1]});
+		result = await battleship.reveal_move(moves1[16][0],moves1[16][1], salt2, {from:accounts[2]});
+		eventArgs = getEventArgs(result, GAME_WINNER);
+		assert.equal(eventArgs.winner, accounts[1], "Wrong winner");
+	});
+
 });
 
 function getEventArgs(transaction_result, event_name) {
