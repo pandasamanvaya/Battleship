@@ -170,7 +170,7 @@ class Board extends Component{
     }
 
     componentDidMount(){
-        let web3 = new Web3('ws://127.0.0.1:8545');
+        let web3 = new Web3(new Web3.providers.WebsocketProvider('ws://localhost:8545'));
         let contract = new web3.eth.Contract(JSON.parse(sessionStorage.getItem('abi')),sessionStorage.getItem('address'));
         this.setTurn();
 
@@ -202,7 +202,9 @@ class Board extends Component{
                 return;
             
             let x = parseInt(event.returnValues['x']);
-            let y = parseInt(event.returnValues['y']);            
+            let y = parseInt(event.returnValues['y']);   
+            web3 = new Web3( new Web3.providers.WebsocketProvider('ws://localhost:8545'));
+            contract = new web3.eth.Contract(JSON.parse(sessionStorage.getItem('abi')),sessionStorage.getItem('address'));             
             contract.methods.reveal_move(x,y,sessionStorage.getItem('salt')).send({from:sessionStorage.getItem('account'), gas:4712388});
         });
         contract.events.GameWinner((error,event)=>{console.log(event);})
